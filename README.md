@@ -2,7 +2,7 @@
 
 Twitch bot for commands using Ktor websockets and HTTP client.
 
-The software is provided "as is", without warranty of any kind. Please use with great care, 
+The software is provided "as is", without warranty of any kind. Please use with great care.
 
 ---
 
@@ -33,7 +33,10 @@ A client ID, which is used in the next step, is added when the application is cr
 
 **Step 3:**
 
-Request a new access token using the new client ID: https://id.twitch.tv/oauth2/authorize?response_type=token&redirect_uri=http://localhost&scope=chat%3Aread+chat%3Aedit&client_id=<ADD_TWITCH_CLIENT_ID>
+Request a new access token using the new client ID:
+```
+https://id.twitch.tv/oauth2/authorize?response_type=token&redirect_uri=http://localhost&scope=chat%3Aread+chat%3Aedit&client_id=<ADD_TWITCH_CLIENT_ID>
+```
 
 You will be redirected to a new URL containing the access token like so:
 ```
