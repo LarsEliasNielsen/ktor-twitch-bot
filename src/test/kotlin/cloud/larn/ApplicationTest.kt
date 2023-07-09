@@ -1,21 +1,33 @@
 package cloud.larn
 
+import cloud.larn.plugins.TwitchBotPlugin
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.server.testing.*
-import kotlin.test.*
 import io.ktor.http.*
-import cloud.larn.plugins.*
+import io.ktor.server.application.*
+import io.ktor.server.config.*
+import io.ktor.server.testing.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class ApplicationTest {
+
     @Test
-    fun testRoot() = testApplication {
+    fun testBotStart() = testApplication {
+        environment {
+            config = MapApplicationConfig(
+                "bot.user" to "bot",
+                "bot.channel" to "twitch"
+            )
+        }
         application {
-            configureRouting()
+            install(TwitchBotPlugin) {
+                this.accessToken = "abc123"
+                this.runContinuousBot = false
+            }
         }
-        client.get("/").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            assertEquals("Hello World!", bodyAsText())
-        }
+
+        val response = client.get("/start")
+
+        assertEquals(HttpStatusCode.OK, response.status)
     }
 }

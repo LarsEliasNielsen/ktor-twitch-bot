@@ -20,6 +20,7 @@ val TwitchBotPlugin = createApplicationPlugin(
     createConfiguration = ::TwitchBotPluginConfiguration
 ) {
     val accessToken = pluginConfig.accessToken
+    val runBot = pluginConfig.runContinuousBot
     val twitchUser = pluginConfig.twitchUser
     val twitchChannel = pluginConfig.twitchChannel
 
@@ -27,36 +28,48 @@ val TwitchBotPlugin = createApplicationPlugin(
         application.log.error("Configuration is missing, shutting down")
         Runtime.getRuntime().exit(-1)
     } else {
-        this.setupBot(twitchUser, twitchChannel, accessToken)
+        this.setupBot(twitchUser, twitchChannel, accessToken, runBot)
     }
 }
 
 @OptIn(DelicateCoroutinesApi::class)
-fun PluginBuilder<TwitchBotPluginConfiguration>.setupBot(twitchUser: String, twitchChannel: String, accessToken: String) {
+fun PluginBuilder<TwitchBotPluginConfiguration>.setupBot(
+    twitchUser: String,
+    twitchChannel: String,
+    accessToken: String,
+    runBot: Boolean = true
+) {
     val botThreadContext = newSingleThreadContext("BotThread")
     val client = HttpClient(CIO) {
         install(WebSockets)
     }
 
     this.application.routing {
-        get("start") {
+        get("/start") {
             println("Starting bot...")
             call.respond(HttpStatusCode.OK)
 
-            runBlocking {
-                withContext(botThreadContext) {
-                    client.webSocket(method = HttpMethod.Get, host = "irc-ws.chat.twitch.tv", port = 80, path = "/") {
-                        val messageOutputRoutine = launch { outputMessages(twitchChannel) }
-                        val userInputRoutine = launch { inputMessages() }
+            if (runBot) {
+                runBlocking {
+                    withContext(botThreadContext) {
+                        client.webSocket(
+                            method = HttpMethod.Get,
+                            host = "irc-ws.chat.twitch.tv",
+                            port = 80,
+                            path = "/"
+                        ) {
+                            val messageOutputRoutine = launch { outputMessages(twitchChannel) }
+                            val userInputRoutine = launch { inputMessages() }
 
-                        outgoing.send(Frame.Text("CAP REQ :twitch.tv/membership twitch.tv/tags twitch.tv/commands"))
-                        outgoing.send(Frame.Text("PASS oauth:$accessToken"))
-                        outgoing.send(Frame.Text("NICK $twitchUser"))
-                        outgoing.send(Frame.Text("JOIN #$twitchChannel"))
-                        outgoing.send(Frame.Text("PRIVMSG #$twitchChannel :${twitchUser} bot is running peepoHappy"))
+                            outgoing.send(Frame.Text("CAP REQ :twitch.tv/membership twitch.tv/tags twitch.tv/commands"))
+                            outgoing.send(Frame.Text("PASS oauth:$accessToken"))
+                            outgoing.send(Frame.Text("NICK $twitchUser"))
+                            outgoing.send(Frame.Text("JOIN #$twitchChannel"))
+                            outgoing.send(Frame.Text("PRIVMSG #$twitchChannel :${twitchUser} bot is running peepoHappy"))
 
-                        userInputRoutine.join() // Wait for completion; either "exit" or error
-                        messageOutputRoutine.cancelAndJoin()
+                            userInputRoutine.join() // Wait for completion; either "exit" or error
+                            messageOutputRoutine.cancelAndJoin()
+                        }
                     }
                 }
             }
